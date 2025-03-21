@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const BAR_COUNT = 10;         // Количество баров
-const TOTAL_WIDTH = 200;      // Общая ширина контейнера (px)
+// Базовая ширина для десктопа
+const BAR_COUNT = 11;         // Количество баров
+const DESKTOP_WIDTH = 200;    // Ширина для десктопа
+const MOBILE_WIDTH = 120;     // Ширина для мобильных устройств
 const CYCLE_DURATION = 6000;  // Длительность полного цикла (мс)
 const BAR_HEIGHT = 16;        // Высота каждого бара
 
@@ -46,6 +48,30 @@ const interpolateColor = (color1, color2, fraction) => {
 };
 
 const Barcode = () => {
+  // Добавляем состояние для текущей ширины
+  const [totalWidth, setTotalWidth] = useState(DESKTOP_WIDTH);
+  
+  // Обновляем ширину при изменении размера экрана
+  useEffect(() => {
+    const handleResize = () => {
+      // Если ширина экрана меньше 640px (sm breakpoint в Tailwind), используем мобильную ширину
+      if (window.innerWidth < 640) {
+        setTotalWidth(MOBILE_WIDTH);
+      } else {
+        setTotalWidth(DESKTOP_WIDTH);
+      }
+    };
+    
+    // Проверяем сразу при загрузке
+    handleResize();
+    
+    // Добавляем слушатель изменения размера окна
+    window.addEventListener('resize', handleResize);
+    
+    // Очищаем слушатель при размонтировании
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Базовые случайные ширины баров (не меняются)
   const barBaseRef = useRef([]);
   if (barBaseRef.current.length === 0) {
@@ -132,11 +158,11 @@ const Barcode = () => {
         rawGaps[j] = Math.max(gap, GAP_MIN);
       }
 
-      // Нормализация: суммарная ширина (баров + отступов) должна равняться TOTAL_WIDTH
+      // Нормализация: суммарная ширина (баров + отступов) должна равняться totalWidth
       const sumRawBars = rawBars.reduce((sum, w) => sum + w, 0);
       const sumRawGaps = rawGaps.reduce((sum, g) => sum + g, 0);
       const totalRaw = sumRawBars + sumRawGaps;
-      const factor = TOTAL_WIDTH / totalRaw;
+      const factor = totalWidth / totalRaw;
 
       const finalBars = rawBars.map((w) => w * factor);
       const finalGaps = rawGaps.map((g) => g * factor);
@@ -146,7 +172,7 @@ const Barcode = () => {
     };
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, []);
+  }, [totalWidth]);
 
   // Вычисляем смещения (offsets) для интерполяции цвета по всей ширине
   let left = 0;
@@ -159,16 +185,16 @@ const Barcode = () => {
   return (
     <div
       className="relative flex overflow-hidden"
-      style={{ width: `${TOTAL_WIDTH}px` }}
+      style={{ width: `${totalWidth}px` }}
     >
       {layout.finalBars.map((w, i) => {
         const center = offsets[i] + w / 2;
-        const fraction = center / TOTAL_WIDTH;
+        const fraction = center / totalWidth;
         const barColor = interpolateColor(COLOR_START, COLOR_END, fraction);
         return (
           <div
             key={i}
-            className="mb-3"
+            className="mb-2 lg"
             style={{
               height: `${BAR_HEIGHT}px`,
               width: `${w}px`,
